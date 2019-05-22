@@ -36,8 +36,11 @@ data Table (pkey :: *) (keys :: [*]) (elt :: *) =
   Table { elts    :: !(Map pkey elt)
         , indices :: !(Indices pkey keys elt) }
 
-instance (Eq pkey, Eq elt) => Eq (Table pkey keys elt) where
-  Table{ elts = elts1 } == Table{ elts = elts2 } = elts1 == elts2
+instance (Eq elt) => Eq (Table pkey keys elt) where
+  Table{ elts = elts1 } == Table{ elts = elts2 } = M.elems elts1 == M.elems elts2
+
+instance (Show elt) => Show (Table pkey keys elt) where
+  show Table{ elts } = "fromList " ++ show (M.elems elts)
 
 instance Foldable (Table pkey keys) where
   foldr f x Table{ elts } = foldr f x elts
