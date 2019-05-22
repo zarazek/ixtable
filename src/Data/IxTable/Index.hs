@@ -70,7 +70,7 @@ restrictPkeys pkeys idx@Index{ index } = idx { index = index' }
         False -> Just set'
         True  -> Nothing
       where
-        set' = set `S.difference` pkeys
+        set' = S.intersection set pkeys
 
 lookup :: (Ord pkey, Ord key) => RangeQuery key -> Index pkey key elt -> Set pkey
 lookup RangeQuery{ key, lt, eq, gt } Index{ index } =
