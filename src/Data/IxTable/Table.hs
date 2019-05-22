@@ -15,6 +15,7 @@ module Data.IxTable.Table
   , insert, delete, update, upsert
   , Lookup, lookup, keysSet
   , getLT, getLTE, getEQ, getGTE, getGT
+  , null, size
   , fromList
   , toMap
   ) where
@@ -169,6 +170,12 @@ getGT :: (Lookup key table) => key -> table -> table
 getGT key = lookup query
   where
     query = RangeQuery{ key = key, lt = False, eq = False, gt = True }
+
+null :: Table pkey keys elt -> Bool
+null Table{ elts } = M.null elts
+
+size :: Table pkey keys elt -> Int
+size Table{ elts } = M.size elts
 
 fromList :: (Ord pkey, All Ord keys, Indexable pkey keys elt, Foldable t)
          => t elt
