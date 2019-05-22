@@ -13,13 +13,13 @@ module Data.IxTable.Table
   , Indexable(..), PrimaryKey(..)
   , empty
   , insert, delete, update, upsert
-  , Lookup, lookup, keysSet
+  , Lookup, member, lookup, keysSet
   , getLT, getLTE, getEQ, getGTE, getGT
   , null, size
   , fromList
   , toMap
   ) where
-import           Prelude                hiding (lookup)
+import           Prelude                hiding (lookup, null)
 
 import qualified Data.Map.Strict        as M
 import           Data.Map.Strict        (Map)
@@ -117,10 +117,13 @@ upsert new Table{ elts, indices } = (table', maybeOld)
     pkey = extractPkey new
 
 class Lookup key table where
+  member :: key -> table -> Bool
   lookup :: RangeQuery key -> table -> table
   keysSet :: table -> Set key
 
 instance {-# OVERLAPPING #-} (Ord pkey, All Ord keys) => Lookup pkey (Table pkey keys elt) where
+  member pkey Table{ elts } = M.member pkey elts
+
   lookup RangeQuery{ key = pkey, lt, eq, gt }
              Table{ elts, indices } =
     Table{ elts = elts', indices = indices' }
@@ -137,6 +140,8 @@ instance {-# OVERLAPPING #-} (Ord pkey, All Ord keys) => Lookup pkey (Table pkey
   keysSet Table{ elts } = M.keysSet elts
 
 instance {-# OVERLAPPABLE #-} (Ord key, Ord pkey, All Ord keys, Idc.IsIndexOf key keys) => Lookup key (Table pkey keys elt) where
+  member key Table{ indices } = Idc.member key indices
+
   lookup query Table{ elts, indices } =
     Table{ elts = elts', indices = indices' }
     where

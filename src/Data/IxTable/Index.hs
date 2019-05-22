@@ -6,6 +6,7 @@ module Data.IxTable.Index
   , ixFun
   , insert, delete, update
   , restrictPkeys
+  , member
   , lookup
   , keysSet
   ) where
@@ -71,6 +72,9 @@ restrictPkeys pkeys idx@Index{ index } = idx { index = index' }
         True  -> Nothing
       where
         set' = S.intersection set pkeys
+
+member :: (Ord key) => key -> Index pkey key elt -> Bool
+member key Index{ index } = M.member key index
 
 lookup :: (Ord pkey, Ord key) => RangeQuery key -> Index pkey key elt -> Set pkey
 lookup RangeQuery{ key, lt, eq, gt } Index{ index } =

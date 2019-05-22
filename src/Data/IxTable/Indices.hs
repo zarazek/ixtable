@@ -15,6 +15,7 @@ module Data.IxTable.Indices
   , insert, delete, update
   , restrictPkeys
   , IsIndexOf()
+  , member
   , lookup
   , keysSet
   ) where
@@ -88,6 +89,9 @@ instance {-# OVERLAPPING #-} IsIndexOf key (key ': keys) where
 instance {-# OVERLAPPABLE #-} IsIndexOf key1 keys =>
                               IsIndexOf key1 (key2 ': keys) where
   access (ICons _ idxs) = access idxs
+
+member :: (Ord key, IsIndexOf key keys) => key -> Indices pkey keys elt -> Bool
+member key indices = Idx.member key $ access indices
 
 lookup :: (Ord pkey, Ord key, IsIndexOf key keys)
        => RangeQuery key
