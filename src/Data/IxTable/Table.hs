@@ -13,11 +13,10 @@ module Data.IxTable.Table
   , Indexable(..), PrimaryKey(..)
   , empty
   , insert, delete, update, upsert
-  , Lookup, lookup
+  , Lookup, lookup, keysSet
   , getLT, getLTE, getEQ, getGTE, getGT
   , fromList
   , toMap
-  , pkeysSet, keysSet
   ) where
 import           Prelude                hiding (lookup)
 
@@ -115,6 +114,7 @@ upsert new Table{ elts, indices } = (table', maybeOld)
 
 class Lookup key table where
   lookup :: RangeQuery key -> table -> table
+  keysSet :: table -> Set key
 
 instance {-# OVERLAPPING #-} (Ord pkey, All Ord keys) => Lookup pkey (Table pkey keys elt) where
   lookup RangeQuery{ key = pkey, lt, eq, gt }
@@ -130,6 +130,8 @@ instance {-# OVERLAPPING #-} (Ord pkey, All Ord keys) => Lookup pkey (Table pkey
       indices' = Idc.restrictPkeys pkeys indices
       pkeys = M.keysSet elts'
 
+  keysSet Table{ elts } = M.keysSet elts
+
 instance {-# OVERLAPPABLE #-} (Ord key, Ord pkey, All Ord keys, Idc.IsIndexOf key keys) => Lookup key (Table pkey keys elt) where
   lookup query Table{ elts, indices } =
     Table{ elts = elts', indices = indices' }
@@ -137,6 +139,8 @@ instance {-# OVERLAPPABLE #-} (Ord key, Ord pkey, All Ord keys, Idc.IsIndexOf ke
       elts' = M.restrictKeys elts pkeys
       indices' = Idc.restrictPkeys pkeys indices
       pkeys = Idc.lookup query indices
+
+  keysSet Table{ indices } = Idc.keysSet indices
 
 getLT :: (Lookup key table) => key -> table -> table
 getLT key = lookup query
@@ -170,9 +174,3 @@ fromList = foldlM (flip insert) empty
 
 toMap :: Table pkey keys elt -> Map pkey elt
 toMap Table{ elts } = elts
-
-pkeysSet :: Table pkey keys elt -> Set pkey
-pkeysSet Table{ elts } = M.keysSet elts
-
-keysSet :: (Idc.IsIndexOf key keys) => Table pkey keys elt -> Set key
-keysSet Table { indices } = Idc.keysSet indices

@@ -7,6 +7,7 @@
 module Main where
 
 import qualified Data.Set as S
+import           Data.Set (Set)
 import           Data.Foldable (toList)
 
 import           Control.Monad.Except
@@ -65,8 +66,14 @@ runTests act = do
 printLn :: String -> ExceptT String IO ()
 printLn = lift . putStrLn
 
-printTbl :: (Show pkey) => Table pkey keys elt -> ExceptT String IO ()
-printTbl = printLn . show . Tbl.pkeysSet
+assertEq :: (Eq a, Show a) => String -> a -> a -> ExceptT String IO ()
+assertEq msg actual expected = do
+  printLn msg
+  case actual == expected of
+    True  -> printLn $ "\tOK, " <> show actual
+    False -> throwError errorMsg
+      where
+        errorMsg = "\tFAILURE: expected: " <> show expected <> ", actual: " <> show actual
 
 main :: IO ()
 main = runTests $ do
@@ -74,23 +81,31 @@ main = runTests $ do
   t :: ExampleTable <- case Tbl.fromList examples of
     Right tbl -> pure tbl
     Left pkey -> throwError $ "duplicate pkey " ++ show pkey
-  printLn "Looking up by pkey (Word)"
-  let s1 = Tbl.pkeysSet $ Tbl.getEQ (3 :: Word) t
-  case s1 == S.fromList [3] of
-    False -> throwError $ show s1
-    True  -> printLn $ show s1
-  printLn "Looking up by Int"
-  let s2 = Tbl.pkeysSet $ Tbl.getEQ (1 :: Int) t
-  case s2 == S.empty of
-    False -> throwError $ show s2
-    True  -> printLn $ show s2
-  printLn "Looking up by String"
-  let s3 = Tbl.pkeysSet $ Tbl.getEQ "aa" t
-  case s3 == S.fromList [1, 2, 4] of
-    False -> throwError $ show s3
-    True  -> printLn $ show s3
-  printLn "Looking up by Double"
-  let s4 = Tbl.pkeysSet $ Tbl.getLTE (13.0 :: Double) t
-  case s4 == S.fromList [1, 3, 4] of
-    False -> throwError $ show s4
-    True  -> printLn $ show s4
+
+  printLn "Filtering by pkey (Word)"
+  let table1 = Tbl.getEQ (3 :: Word) t
+  assertEq "pkey set" (Tbl.keysSet table1) (S.fromList [3 :: Word])
+  assertEq "Int key set" (Tbl.keysSet table1) (S.empty :: Set Int)
+  assertEq "String key set" (Tbl.keysSet table1) (S.fromList ["bb", "dd"])
+  assertEq "Double key set" (Tbl.keysSet table1) (S.fromList [12.9 :: Double])
+
+  printLn "Filtering by Int"
+  let table2 = Tbl.getEQ (1 :: Int) t
+  assertEq "pkey set" (Tbl.keysSet table2) (S.empty :: Set Word)
+  assertEq "Int key set" (Tbl.keysSet table2) (S.empty :: Set Int)
+  assertEq "String key set" (Tbl.keysSet table2) (S.empty :: Set String)
+  assertEq "Double key set" (Tbl.keysSet table2) (S.empty :: Set Double)
+
+  printLn "Filtering by String"
+  let table3 = Tbl.getEQ "aa" t
+  assertEq "pkey set" (Tbl.keysSet table3) (S.fromList [1 :: Word, 2, 4])
+  assertEq "Int key set" (Tbl.keysSet table3) (S.fromList [5 :: Int, 7])
+  assertEq "String key set" (Tbl.keysSet table3) (S.fromList ["aa", "bb", "cc"])
+  assertEq "Double key set" (Tbl.keysSet table3) (S.fromList [12.8 :: Double, 13.0, 13.1])
+
+  printLn "Filtering by Double"
+  let table4 = Tbl.getEQ (13.0 :: Double) t
+  assertEq "pkey set" (Tbl.keysSet table4) (S.fromList [1 :: Word, 3, 4])
+  assertEq "Int key set" (Tbl.keysSet table4) (S.fromList [5 :: Int])
+  assertEq "String key set" (Tbl.keysSet table4) (S.fromList ["aa", "bb", "cc", "dd"])
+  assertEq "Double key set" (Tbl.keysSet table4) (S.fromList [12.8 :: Double, 12.9, 13.0])
