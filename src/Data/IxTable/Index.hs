@@ -3,7 +3,7 @@
 
 module Data.IxTable.Index
   ( Index
-  , ixFun
+  , ixFun, ixField
   , insert, delete, update
   , restrictPkeys
   , member
@@ -29,6 +29,12 @@ data Index pkey key elt = Index { extractKeys :: !(elt -> [key])
 ixFun :: (elt -> [key]) -> Index pkey key elt
 ixFun extractKeys = Index { extractKeys
                           , index = M.empty }
+
+ixField :: (elt -> key) -> Index pkey key elt
+ixField extractField = Index { extractKeys = singleton . extractField
+                             , index = M.empty }
+  where
+    singleton x = [x]
 
 insert :: (Ord pkey, Ord key) => pkey -> elt -> Index pkey key elt -> Index pkey key elt
 insert pkey elt idx@Index{ extractKeys, index } = idx { index = index' }
