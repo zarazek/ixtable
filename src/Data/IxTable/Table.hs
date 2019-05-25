@@ -13,6 +13,7 @@ module Data.IxTable.Table
   , Indexable(..), PrimaryKey(..)
   , empty
   , insert, delete, update, upsert
+  , lookupByPkey
   , Lookup, member, lookup, keysSet
   , getLT, getLTE, getEQ, getGTE, getGT
   , null, size
@@ -115,6 +116,9 @@ upsert new Table{ elts, indices } = (table', maybeOld)
       Nothing  -> indices
       Just old -> Idc.update pkey old new indices
     pkey = extractPkey new
+
+lookupByPkey :: Ord pkey => pkey -> Table pkey keys elt -> Maybe elt
+lookupByPkey pkey Table{ elts } = M.lookup pkey elts
 
 class Lookup key table where
   member :: key -> table -> Bool
