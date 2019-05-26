@@ -11,16 +11,14 @@ module Main where
 #if !MIN_VERSION_base(4,11,0)
 import           Data.Monoid
 #endif
-import qualified Data.Set as S
-import           Data.Set (Set)
-import           Data.Foldable (toList)
+import qualified Data.Set             as S
+import           Data.Set             (Set)
+import           Data.Foldable        (toList)
 
 import           Control.Monad.Except
 
-import qualified Data.IxTable.Table   as Tbl
-import           Data.IxTable.Table   (Table)
-import qualified Data.IxTable.Indices as Idc
-import qualified Data.IxTable.Index   as Idx
+import qualified Data.IxTable         as Tbl
+import           Data.IxTable         (Table)
 
 data Example = Example { primKey       :: Word
                        , maybeInt      :: Maybe Int
@@ -36,9 +34,9 @@ instance Tbl.PrimaryKey Word Example where
   extractPkey = primKey
 
 instance Tbl.Indexable Word ExampleKeys Example where
-  emptyIndices = Idc.mkIndices (Idx.ixFun (toList . maybeInt))
-                               (Idx.ixFun listOfStrings)
-                               (Idx.ixFun (singleton . double))
+  emptyIndices = Tbl.mkIndices (Tbl.ixFun (toList . maybeInt))
+                               (Tbl.ixFun listOfStrings)
+                               (Tbl.ixField double)
 
 singleton :: a -> [a]
 singleton x = [x]

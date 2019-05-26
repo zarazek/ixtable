@@ -19,14 +19,14 @@ extra-source-files:
 # common to point users to the README.md file.
 description:         Please see the README on GitHub at <https://github.com/zarazek/ixtable#readme>
 
-dependencies:
-- base >= 4.7 && < 5
-- containers
-- mtl
-- these
-
 library:
   source-dirs: src
+  exposed-modules: Data.IxTable
+  dependencies:
+  - base >= 4.7 && < 5
+  - containers
+  - mtl
+  - these
 
 executables:
   ixtable-exe:
@@ -39,6 +39,9 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - base >= 4.7 && < 5
+    - containers
+    - mtl
     - ixtable
 
 tests:
