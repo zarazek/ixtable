@@ -19,15 +19,17 @@ module Data.IxTable.Table
   , null, size
   , fromList
   , toMap
+  , TableDiff(..), tableDiff
   ) where
 import           Prelude                hiding (lookup, null)
 
 import qualified Data.Map.Strict        as M
 import           Data.Map.Strict        (Map)
 import           Data.Set               (Set)
+import           Data.These             (These(..))
 
 import           Data.Bool              (bool)
-import           Data.Foldable          (foldlM)
+import           Data.Foldable          (foldl', foldlM)
 
 import qualified Data.IxTable.Indices   as Idc
 import           Data.IxTable.Indices   (Indices)
@@ -193,3 +195,47 @@ fromList = foldlM (flip insert) empty
 
 toMap :: Table pkey keys elt -> Map pkey elt
 toMap Table{ elts } = elts
+
+data TableDiff elt
+  = TableDiff
+  { removed :: [elt]
+  , updated :: [(elt, elt)]
+  , added   :: [elt]
+  }
+
+tableDiff :: Ord pkey
+          => Table pkey keys1 elt
+          -> Table pkey keys2 elt
+          -> TableDiff elt
+tableDiff Table{ elts = oldElts } Table{ elts = newElts } =
+  mapDiff oldElts newElts
+
+mapDiff :: Ord k => Map k v -> Map k v -> TableDiff v
+mapDiff old new = ascKvListDiff (M.toAscList old) (M.toAscList new)
+
+ascKvListDiff :: Ord k => [(k, v)] -> [(k, v)] -> TableDiff v
+ascKvListDiff old new = foldl' f emptyDiff $
+                        zipAscKvListsWith (flip const) old new
+  where
+    f tbl@TableDiff{ removed, updated, added } = \case
+      This x    -> tbl { removed = x : removed }
+      That y    -> tbl { added = y : added }
+      These x y -> tbl { updated = (x, y) : updated }
+    emptyDiff = TableDiff{ removed = [], updated = [], added = [] }
+      
+zipAscKvListsWith :: Ord k
+                  => (k -> These v v -> a)
+                  -> [(k, v)]
+                  -> [(k, v)]
+                  -> [a]
+zipAscKvListsWith f = go
+  where
+    go []                 kys                = map (uncurry f . mapSnd That) kys
+    go kxs                []                 = map (uncurry f . mapSnd This) kxs
+    go kxs@((kx, x):kxs') kys@((ky, y):kys') =
+      case compare kx ky of
+        LT -> f kx (This x) : go kxs' kys
+        EQ -> f kx (These x y) : go kxs' kys'
+        GT -> f ky (That y) : go kxs kys'
+    mapSnd g (x, y) = (x, g y)
+      
