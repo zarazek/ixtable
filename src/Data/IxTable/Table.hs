@@ -85,12 +85,11 @@ delete pkey Table{ elts, indices } = (table', maybeRemoved)
       Nothing  -> indices
       Just elt -> Idc.delete pkey elt indices
 
-update :: (Ord pkey, All Ord keys)
-       => pkey
-       -> elt
+update :: (Ord pkey, All Ord keys, PrimaryKey pkey elt)
+       => elt
        -> Table pkey keys elt
        -> Maybe (Table pkey keys elt, elt)
-update pkey new Table{ elts, indices } =
+update new Table{ elts, indices } =
   case unMaybePair $ M.alterF checkedUpdateAndSave pkey elts of
     Nothing           -> Nothing
     Just (old, elts') -> Just (table', old)
@@ -98,6 +97,7 @@ update pkey new Table{ elts, indices } =
         table' = Table{ elts = elts', indices = indices' }
         indices' = Idc.update pkey old new indices
   where
+    pkey = extractPkey new
     checkedUpdateAndSave = \case
       Nothing  -> MaybePair Nothing
       Just old -> MaybePair $ Just (old, Just new)
