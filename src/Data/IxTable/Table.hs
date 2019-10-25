@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveFunctor         #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -37,8 +38,8 @@ import           Data.IxTable.RangeQuery
 import           Data.IxTable.TypeLevel
 
 data Table (pkey :: *) (keys :: [*]) (elt :: *) =
-  Table { elts    :: !(Map pkey elt)
-        , indices :: !(Indices pkey keys elt) }
+  Table { elts    :: Map pkey elt
+        , indices :: Indices pkey keys elt }
 
 instance (Eq elt) => Eq (Table pkey keys elt) where
   Table{ elts = elts1 } == Table{ elts = elts2 } = M.elems elts1 == M.elems elts2
@@ -56,7 +57,7 @@ class PrimaryKey pkey elt => Indexable pkey keys elt where
   emptyIndices :: Indices pkey keys elt
 
 empty :: (Indexable pkey keys elt) => Table pkey keys elt
-empty = Table { elts = M.empty, indices = emptyIndices }
+empty = mkStrictTable M.empty emptyIndices
 
 insert :: (Ord pkey, All Ord keys, PrimaryKey pkey elt)
        => elt
@@ -65,7 +66,7 @@ insert :: (Ord pkey, All Ord keys, PrimaryKey pkey elt)
 insert elt Table{ elts, indices } =
   mkTable <$> M.alterF checkedInsert pkey elts
   where
-    mkTable elts' = Table { elts = elts', indices = indices' }
+    mkTable elts' = mkStrictTable elts' indices'
     indices' = Idc.insert pkey elt indices
     checkedInsert = \case
       Nothing -> Right $ Just elt
@@ -78,7 +79,7 @@ delete :: (Ord pkey, All Ord keys)
        -> (Table pkey keys elt, Maybe elt)
 delete pkey Table{ elts, indices } = (table', maybeRemoved)
   where
-    table' = Table{ elts = elts', indices = indices' }
+    table' = mkStrictTable elts' indices'
     (maybeRemoved, elts') = M.alterF deleteAndSave pkey elts
     deleteAndSave x = (x, Nothing)
     indices' = case maybeRemoved of
@@ -94,7 +95,7 @@ update new Table{ elts, indices } =
     Nothing           -> Nothing
     Just (old, elts') -> Just (table', old)
       where
-        table' = Table{ elts = elts', indices = indices' }
+        table' = mkStrictTable elts' indices'
         indices' = Idc.update pkey old new indices
   where
     pkey = extractPkey new
@@ -111,13 +112,16 @@ upsert :: (Ord pkey, All Ord keys, PrimaryKey pkey elt)
        -> (Table pkey keys elt, Maybe elt)
 upsert new Table{ elts, indices } = (table', maybeOld)
   where
-    table' = Table{ elts = elts', indices = indices' }
+    table' = mkStrictTable elts' indices'
     (maybeOld, elts') = M.alterF upsertAndSave pkey elts
     upsertAndSave x = (x, Just new)
     indices' = case maybeOld of
       Nothing  -> indices
       Just old -> Idc.update pkey old new indices
     pkey = extractPkey new
+
+mkStrictTable :: Map pkey elt -> Indices pkey keys elt -> Table pkey keys elt
+mkStrictTable !elts !indices = Table{ elts, indices }
 
 lookupByPkey :: Ord pkey => pkey -> Table pkey keys elt -> Maybe elt
 lookupByPkey pkey Table{ elts } = M.lookup pkey elts
