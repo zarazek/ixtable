@@ -206,24 +206,25 @@ data TableDiff elt
 emptyDiff :: TableDiff elt
 emptyDiff = TableDiff{ removed = [], updated = [], added = [] }
 
-tableDiff :: Ord pkey
+tableDiff :: (Ord pkey, Eq elt)
           => Table pkey keys1 elt
           -> Table pkey keys2 elt
           -> TableDiff elt
 tableDiff Table{ elts = oldElts } Table{ elts = newElts } =
   mapDiff oldElts newElts
 
-mapDiff :: Ord k => Map k v -> Map k v -> TableDiff v
+mapDiff :: (Ord k, Eq v) => Map k v -> Map k v -> TableDiff v
 mapDiff old new = ascKvListDiff (M.toAscList old) (M.toAscList new)
 
-ascKvListDiff :: Ord k => [(k, v)] -> [(k, v)] -> TableDiff v
+ascKvListDiff :: (Ord k, Eq v) => [(k, v)] -> [(k, v)] -> TableDiff v
 ascKvListDiff old new = foldl' f emptyDiff $
                         zipAscKvListsWith (flip const) old new
   where
     f tbl@TableDiff{ removed, updated, added } = \case
-      This x    -> tbl { removed = x : removed }
-      That y    -> tbl { added = y : added }
-      These x y -> tbl { updated = (x, y) : updated }
+      This x             -> tbl { removed = x : removed }
+      That y             -> tbl { added = y : added }
+      These x y | x /= y -> tbl { updated = (x, y) : updated }
+      _                  -> tbl
       
 zipAscKvListsWith :: Ord k
                   => (k -> These v v -> a)
