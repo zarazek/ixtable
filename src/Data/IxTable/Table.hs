@@ -19,7 +19,7 @@ module Data.IxTable.Table
   , null, size
   , fromList
   , toMap
-  , TableDiff(..), tableDiff
+  , TableDiff(..), emptyDiff, tableDiff
   ) where
 import           Prelude                hiding (lookup, null)
 
@@ -203,6 +203,9 @@ data TableDiff elt
   , added   :: [elt]
   }
 
+emptyDiff :: TableDiff elt
+emptyDiff = TableDiff{ removed = [], updated = [], added = [] }
+
 tableDiff :: Ord pkey
           => Table pkey keys1 elt
           -> Table pkey keys2 elt
@@ -221,7 +224,6 @@ ascKvListDiff old new = foldl' f emptyDiff $
       This x    -> tbl { removed = x : removed }
       That y    -> tbl { added = y : added }
       These x y -> tbl { updated = (x, y) : updated }
-    emptyDiff = TableDiff{ removed = [], updated = [], added = [] }
       
 zipAscKvListsWith :: Ord k
                   => (k -> These v v -> a)
